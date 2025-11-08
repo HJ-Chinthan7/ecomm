@@ -6,7 +6,7 @@ const authenticate = asyncHandler(async (req, res, next) => {
   let token;
 
   const authHeader = req.headers.authorization || req.headers.Authorization;
-  if (authHeader && authHeader.startsWith("Bearer ")) {
+  if (authHeader && authHeader.startsWith("Bearer")) {
     token = authHeader.split(" ")[1];
   } else {
     token = req.cookies.jwt;
@@ -24,7 +24,7 @@ const authenticate = asyncHandler(async (req, res, next) => {
     }
   } else {
     res.status(401);
-    throw new Error("Not authorized, no token.");
+    throw new Error("Not authorized, no token hi.");
   }
 });
 
