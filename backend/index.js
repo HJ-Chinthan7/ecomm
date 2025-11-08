@@ -25,13 +25,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
-app.use(
-  cors({
-    origin: FRONTEND_URL,
-    credentials: true,
-  })
-);
+const allowedOrigins = [
+  process.env.FRONTEND_URL, 
+  "http://localhost:5173", 
+].filter(Boolean);
+
+const corsOptions = {
+  origin: allowedOrigins,
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 app.use("/api/users", userRoutes);
 app.use("/api/category", categoryRoutes);
