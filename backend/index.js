@@ -55,6 +55,5 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-app.use("/uploads", express.static(uploadsDir));
 
 app.listen(port, () => console.log(`Server running on port: ${port}`));

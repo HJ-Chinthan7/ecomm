@@ -1,4 +1,4 @@
-export const BASE_URL = "https://ecomm-doit.onrender.com";
+export const BASE_URL = "http://localhost:5000"//"https://ecomm-doit.onrender.com";
 export const USERS_URL = "/api/users";
 export const CATEGORY_URL = "/api/category";
 export const PRODUCT_URL = "/api/products";

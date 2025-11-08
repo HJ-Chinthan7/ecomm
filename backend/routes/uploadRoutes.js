@@ -1,53 +1,48 @@
-import path from "path";
 import express from "express";
-import multer from "multer";
+import { v2 as cloudinary } from "cloudinary";
 
 const router = express.Router();
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    // use absolute uploads path to avoid relative cwd issues
-    const uploadPath = path.join(path.resolve(), "uploads");
-    cb(null, uploadPath);
-  },
+router.post("/", async (req, res) => {
+  try {
+    console.log("CLOUDINARY env present:", {
+      cloud: !!process.env.CLOUDINARY_CLOUD_NAME,
+      key: !!process.env.CLOUDINARY_API_KEY,
+      secret: !!process.env.CLOUDINARY_API_SECRET,
+    });
 
-  filename: (req, file, cb) => {
-    const extname = path.extname(file.originalname);
-    cb(null, `${file.fieldname}-${Date.now()}${extname}`);
-  },
-});
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
 
-const fileFilter = (req, file, cb) => {
-  const filetypes = /jpe?g|png|webp/;
-  const mimetypes = /image\/jpe?g|image\/png|image\/webp/;
+    const imageStr = req.body?.image || req.fields?.image || req.query?.image;
 
-  const extname = path.extname(file.originalname).toLowerCase();
-  const mimetype = file.mimetype;
-
-  if (filetypes.test(extname) && mimetypes.test(mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error("Images only"), false);
-  }
-};
-
-const upload = multer({ storage, fileFilter });
-const uploadSingleImage = upload.single("image");
-
-router.post("/", (req, res) => {
-  uploadSingleImage(req, res, (err) => {
-    if (err) {
-      res.status(400).send({ message: err.message });
-    } else if (req.file) {
-      // return a predictable web path (serve from /uploads)
-      res.status(200).send({
-        message: "Image uploaded successfully",
-        image: `/uploads/${req.file.filename}`,
-      });
-    } else {
-      res.status(400).send({ message: "No image file provided" });
+    if (!imageStr) {
+      console.warn("No image string provided in request");
+      return res.status(400).json({ message: "No image provided. Send image string in `image` field." });
     }
-  });
+
+    let result;
+    try {
+      result = await cloudinary.uploader.upload(imageStr, { folder: "products" });
+    } catch (uploadErr) {
+      console.error("Cloudinary upload (string) failed:", uploadErr);
+      return res.status(500).json({ message: uploadErr?.message || "Cloudinary upload failed" });
+    }
+
+    console.log("Upload result:", { public_id: result.public_id, url: result.secure_url });
+
+    return res.status(200).json({
+      message: "Image uploaded successfully",
+      image: result.secure_url,
+      public_id: result.public_id,
+    });
+  } catch (err) {
+    console.error("Upload error:", err);
+    return res.status(500).json({ message: err?.message || "Upload failed" });
+  }
 });
 
 export default router;

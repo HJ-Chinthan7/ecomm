@@ -28,8 +28,9 @@ const ProductList = () => {
     e.preventDefault();
 
     try {
-      const productData = new FormData();
-      productData.append("image", image);
+  const productData = new FormData();
+  // image is a URL (string) returned from uploadProductImage or empty
+  productData.append("image", image);
       productData.append("name", name);
       productData.append("description", description);
       productData.append("price", price);
@@ -38,13 +39,15 @@ const ProductList = () => {
       productData.append("brand", brand);
       productData.append("countInStock", stock);
 
-      const { data } = await createProduct(productData);
-
-      if (data.error) {
-        toast.error("Product create failed. Try Again.");
-      } else {
-        toast.success(`${data.name} is created`);
+      // Use unwrap() so RTK Query throws on error and returns the created product on success
+      try {
+        const created = await createProduct(productData).unwrap();
+        console.log("createProduct response:", created);
+        toast.success(`${created.name} is created`);
         navigate("/");
+      } catch (createErr) {
+        console.error("createProduct error:", createErr);
+        toast.error(createErr?.data?.message || createErr?.error || "Product create failed. Try Again.");
       }
     } catch (error) {
       console.error(error);
@@ -53,16 +56,28 @@ const ProductList = () => {
   };
 
   const uploadFileHandler = async (e) => {
-    const formData = new FormData();
-    formData.append("image", e.target.files[0]);
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // convert file to data URL (base64) and send as JSON to upload endpoint
+    const readFileToDataUrl = (f) =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(f);
+      });
 
     try {
-      const res = await uploadProductImage(formData).unwrap();
+      const dataUrl = await readFileToDataUrl(file);
+      const res = await uploadProductImage({ image: dataUrl }).unwrap();
       toast.success(res.message);
+      // res.image is the Cloudinary secure_url
       setImage(res.image);
       setImageUrl(res.image);
     } catch (error) {
-      toast.error(error?.data?.message || error.error);
+      console.error(error);
+      toast.error(error?.data?.message || error.error || "Upload failed");
     }
   };
 
@@ -85,7 +100,7 @@ const ProductList = () => {
 
           <div className="mb-3">
             <label className="border text-white block w-full text-center rounded-lg cursor-pointer font-bold py-6 md:py-8">
-              {image ? image.name : "Upload Image"}
+              {imageUrl ? "Change Image" : "Upload Image"}
 
               <input
                 type="file"

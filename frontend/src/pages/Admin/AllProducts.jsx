@@ -24,11 +24,7 @@ const AllProducts = () => {
             </div>
             <div className="flex flex-wrap justify-around items-center">
               {products.map((product) => (
-                <Link
-                  key={product._id}
-                  to={`/admin/product/update/${product._id}`}
-                  className="block mb-4 overflow-hidden"
-                >
+                <div key={product._id} className="block mb-4 overflow-hidden">
                   <div className="flex">
                     <img
                       src={product.image}
@@ -76,7 +72,7 @@ const AllProducts = () => {
                       </div>
                     </div>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           </div>

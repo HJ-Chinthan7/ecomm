@@ -1,29 +1,70 @@
 import asyncHandler from "../middlewares/asyncHandler.js";
 import Product from "../models/productModel.js";
+import { v2 as cloudinary } from "cloudinary";
 
 const addProduct = asyncHandler(async (req, res) => {
   try {
-    const { name, description, price, category, quantity, brand } = req.fields;
+    const { name, description, price, category, quantity, brand, image } = req.fields;
 
-    // Validation
+    // Validation: return 400 on missing fields
     switch (true) {
       case !name:
-        return res.json({ error: "Name is required" });
+        return res.status(400).json({ error: "Name is required" });
       case !brand:
-        return res.json({ error: "Brand is required" });
+        return res.status(400).json({ error: "Brand is required" });
       case !description:
-        return res.json({ error: "Description is required" });
+        return res.status(400).json({ error: "Description is required" });
       case !price:
-        return res.json({ error: "Price is required" });
+        return res.status(400).json({ error: "Price is required" });
       case !category:
-        return res.json({ error: "Category is required" });
+        return res.status(400).json({ error: "Category is required" });
       case !quantity:
-        return res.json({ error: "Quantity is required" });
+        return res.status(400).json({ error: "Quantity is required" });
     }
 
-    const product = new Product({ ...req.fields });
-    await product.save();
-    res.json(product);
+    let imageUrl = "";
+    if (image) {
+      try {
+        console.log("Uploading product image via Cloudinary (create)...");
+        cloudinary.config({
+          cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+          api_key: process.env.CLOUDINARY_API_KEY,
+          api_secret: process.env.CLOUDINARY_API_SECRET,
+        });
+        const uploadRes = await cloudinary.uploader.upload(image, { folder: "products" });
+        imageUrl = uploadRes?.secure_url || "";
+      } catch (uploadErr) {
+        console.error("Cloudinary upload (create) failed:", uploadErr?.message || uploadErr);
+        return res.status(500).json({ message: "Image upload failed", error: uploadErr?.message });
+      }
+    }
+
+    const productData = { ...req.fields, image: imageUrl };
+    // Coerce numeric fields which may arrive as strings from form data
+    if (productData.price !== undefined) productData.price = Number(productData.price);
+    if (productData.quantity !== undefined) productData.quantity = Number(productData.quantity);
+    if (productData.countInStock !== undefined) productData.countInStock = Number(productData.countInStock);
+
+    console.log("Creating product with data:", productData);
+
+    try {
+      const product = new Product(productData);
+      await product.save();
+      return res.status(201).json(product);
+    } catch (saveErr) {
+      console.error("Error saving product:", saveErr);
+      if (saveErr.name === "ValidationError") {
+        const errors = Object.keys(saveErr.errors).reduce((acc, key) => {
+          acc[key] = saveErr.errors[key].message;
+          return acc;
+        }, {});
+        return res.status(400).json({ message: "Validation failed", errors });
+      }
+      if (saveErr.name === "CastError") {
+        return res.status(400).json({ message: "Invalid value", error: saveErr.message });
+      }
+      return res.status(500).json({ message: "Failed to save product", error: saveErr.message });
+    }
   } catch (error) {
     console.error(error);
     res.status(400).json(error.message);
@@ -32,9 +73,8 @@ const addProduct = asyncHandler(async (req, res) => {
 
 const updateProductDetails = asyncHandler(async (req, res) => {
   try {
-    const { name, description, price, category, quantity, brand } = req.fields;
+    const { name, description, price, category, quantity, brand, image } = req.fields;
 
-    // Validation
     switch (true) {
       case !name:
         return res.json({ error: "Name is required" });
@@ -50,15 +90,34 @@ const updateProductDetails = asyncHandler(async (req, res) => {
         return res.json({ error: "Quantity is required" });
     }
 
-    const product = await Product.findByIdAndUpdate(
-      req.params.id,
-      { ...req.fields },
-      { new: true }
-    );
+    let imageUrl = undefined;
+    if (image) {
+      try {
+        console.log("Uploading product image via Cloudinary (update)...");
+        cloudinary.config({
+          cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+          api_key: process.env.CLOUDINARY_API_KEY,
+          api_secret: process.env.CLOUDINARY_API_SECRET,
+        });
+        const uploadRes = await cloudinary.uploader.upload(image, { folder: "products" });
+        imageUrl = uploadRes?.secure_url || undefined;
+      } catch (uploadErr) {
+        console.error("Cloudinary upload (update) failed:", uploadErr?.message || uploadErr);
+        return res.status(500).json({ message: "Image upload failed", error: uploadErr?.message });
+      }
+    }
 
-    await product.save();
+  const updateData = { ...req.fields };
+  if (imageUrl) updateData.image = imageUrl;
 
-    res.json(product);
+  if (updateData.price !== undefined) updateData.price = Number(updateData.price);
+  if (updateData.quantity !== undefined) updateData.quantity = Number(updateData.quantity);
+  if (updateData.countInStock !== undefined) updateData.countInStock = Number(updateData.countInStock);
+
+  const product = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true });
+  if (!product) return res.status(404).json({ message: "Product not found" });
+  await product.save();
+  res.json(product);
   } catch (error) {
     console.error(error);
     res.status(400).json(error.message);
