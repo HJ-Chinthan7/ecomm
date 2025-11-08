@@ -5,8 +5,6 @@ import asyncHandler from "./asyncHandler.js";
 const authenticate = asyncHandler(async (req, res, next) => {
   let token;
 
-  // Read JWT from the 'jwt' cookie
-  // Prefer Authorization header (Bearer) if present, otherwise fallback to the 'jwt' cookie
   const authHeader = req.headers.authorization || req.headers.Authorization;
   if (authHeader && authHeader.startsWith("Bearer ")) {
     token = authHeader.split(" ")[1];

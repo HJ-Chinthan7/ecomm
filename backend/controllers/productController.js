@@ -5,8 +5,7 @@ import { v2 as cloudinary } from "cloudinary";
 const addProduct = asyncHandler(async (req, res) => {
   try {
     const { name, description, price, category, quantity, brand, image } = req.fields;
-
-    // Validation: return 400 on missing fields
+console.log("Received product data:", req.fields);
     switch (true) {
       case !name:
         return res.status(400).json({ error: "Name is required" });
@@ -33,6 +32,7 @@ const addProduct = asyncHandler(async (req, res) => {
         });
         const uploadRes = await cloudinary.uploader.upload(image, { folder: "products" });
         imageUrl = uploadRes?.secure_url || "";
+        console.log("Image uploaded to Cloudinary:", imageUrl);
       } catch (uploadErr) {
         console.error("Cloudinary upload (create) failed:", uploadErr?.message || uploadErr);
         return res.status(500).json({ message: "Image upload failed", error: uploadErr?.message });
@@ -40,7 +40,6 @@ const addProduct = asyncHandler(async (req, res) => {
     }
 
     const productData = { ...req.fields, image: imageUrl };
-    // Coerce numeric fields which may arrive as strings from form data
     if (productData.price !== undefined) productData.price = Number(productData.price);
     if (productData.quantity !== undefined) productData.quantity = Number(productData.quantity);
     if (productData.countInStock !== undefined) productData.countInStock = Number(productData.countInStock);

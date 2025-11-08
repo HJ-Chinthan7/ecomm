@@ -48,12 +48,5 @@ app.get("/api/config/paypal", (req, res) => {
   res.send({ clientId: process.env.PAYPAL_CLIENT_ID });
 });
 
-const __dirname = path.resolve();
-
-const uploadsDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
 
 app.listen(port, () => console.log(`Server running on port: ${port}`));
