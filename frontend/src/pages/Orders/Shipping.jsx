@@ -30,7 +30,6 @@ const Shipping = () => {
     navigate("/placeorder");
   };
 
-  // Payment
   useEffect(() => {
     if (!shippingAddress.address) {
       navigate("/shipping");
@@ -100,7 +99,7 @@ const Shipping = () => {
                   onChange={(e) => setPaymentMethod(e.target.value)}
                 />
 
-                <span className="ml-2">PayPal or Credit Card</span>
+                <span className="ml-2">PayPal or Rayzoor pay</span>
               </label>
             </div>
           </div>

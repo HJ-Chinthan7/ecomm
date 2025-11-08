@@ -8,7 +8,7 @@ const App = () => {
     <>
       <ToastContainer />
       <Navigation />
-      <main className="py-3">
+      <main className="py-3 lg:ml-[4%] xl:ml-[4%]">
         <Outlet />
       </main>
     </>
