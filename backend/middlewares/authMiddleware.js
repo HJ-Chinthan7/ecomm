@@ -11,6 +11,7 @@ const authenticate = asyncHandler(async (req, res, next) => {
   } else {
     token = req.cookies.jwt;
   }
+  console.log(token);
 
   if (token) {
     try {
