@@ -39,16 +39,33 @@ const Order = () => {
   useEffect(() => {
     if (!errorRazorpay && !loadingRazorpay && razorpayKey?.keyId) {
       const loadRazorpayScript = () => {
+        if (window.Razorpay) {
+          console.log('Razorpay already loaded');
+          setRazorpayLoaded(true);
+          return;
+        }
+
+        console.log('Loading Razorpay script...');
         const script = document.createElement('script');
         script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.onload = () => setRazorpayLoaded(true);
-        script.onerror = () => toast.error('Failed to load Razorpay SDK');
+        script.onload = () => {
+          console.log('Razorpay script loaded successfully');
+          setRazorpayLoaded(true);
+        };
+        script.onerror = () => {
+          console.error('Failed to load Razorpay SDK');
+          toast.error('Failed to load Razorpay SDK');
+          setRazorpayLoaded(false);
+        };
         document.body.appendChild(script);
       };
 
-      if (order && !order.isPaid && !window.Razorpay) {
+      if (order && !order.isPaid) {
         loadRazorpayScript();
       }
+    } else if (errorRazorpay) {
+      console.error('Razorpay key error:', errorRazorpay);
+      setRazorpayLoaded(false);
     }
   }, [errorRazorpay, loadingRazorpay, order, razorpayKey]);
 
@@ -224,13 +241,36 @@ const Order = () => {
           {!order.isPaid && (
             <div className="border border-gray-300 pb-4 mb-4 rounded-lg p-4">
               {loadingRazorpay ? (
-                <Loader />
+                <div className="flex flex-col items-center justify-center py-4">
+                  <Loader />
+                  <p className="mt-2 text-sm text-gray-600">Loading payment configuration...</p>
+                </div>
+              ) : errorRazorpay ? (
+                <div className="flex flex-col items-center justify-center py-4">
+                  <p className="text-sm text-red-600">Failed to load payment configuration</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="mt-2 text-xs text-blue-500 hover:text-blue-700 underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : !razorpayLoaded ? (
+                <div className="flex flex-col items-center justify-center py-4">
+                  <Loader />
+                  <p className="mt-2 text-sm text-gray-600">Loading Razorpay...</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="mt-2 text-xs text-blue-500 hover:text-blue-700 underline"
+                  >
+                    Retry loading
+                  </button>
+                </div>
               ) : (
                 <div>
                   <button
                     onClick={handleRazorpayPayment}
-                    className="bg-pink-500 text-white py-2 px-4 rounded-full text-lg w-full"
-                    disabled={!razorpayLoaded}
+                    className="bg-pink-500 text-white py-2 px-4 rounded-full text-lg w-full hover:bg-pink-600 transition-colors"
                   >
                     Pay with Razorpay
                   </button>
