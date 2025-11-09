@@ -1,6 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { PayPalButtons, usePayPalScriptReducer } from "@paypal/react-paypal-js";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import Messsage from "../../components/Message";
@@ -8,8 +7,9 @@ import Loader from "../../components/Loader";
 import {
   useDeliverOrderMutation,
   useGetOrderDetailsQuery,
-  useGetPaypalClientIdQuery,
-  usePayOrderMutation,
+  useGetRazorpayKeyIdQuery,
+  useCreateRazorpayOrderMutation,
+  useVerifyRazorpayPaymentMutation,
 } from "../../redux/api/orderApiSlice";
 
 const Order = () => {
@@ -22,65 +22,84 @@ const Order = () => {
     error,
   } = useGetOrderDetailsQuery(orderId);
 
-  const [payOrder, { isLoading: loadingPay }] = usePayOrderMutation();
+  const [createRazorpayOrder] = useCreateRazorpayOrderMutation();
+  const [verifyRazorpayPayment] = useVerifyRazorpayPaymentMutation();
   const [deliverOrder, { isLoading: loadingDeliver }] =
     useDeliverOrderMutation();
   const { userInfo } = useSelector((state) => state.auth);
 
-  const [{ isPending }, paypalDispatch] = usePayPalScriptReducer();
-
   const {
-    data: paypal,
-    isLoading: loadingPaPal,
-    error: errorPayPal,
-  } = useGetPaypalClientIdQuery();
+    data: razorpayKey,
+    isLoading: loadingRazorpay,
+    error: errorRazorpay,
+  } = useGetRazorpayKeyIdQuery();
+
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
 
   useEffect(() => {
-    if (!errorPayPal && !loadingPaPal && paypal.clientId) {
-      const loadingPaPalScript = async () => {
-        paypalDispatch({
-          type: "resetOptions",
-          value: {
-            "client-id": paypal.clientId,
-            currency: "USD",
-          },
-        });
-        paypalDispatch({ type: "setLoadingStatus", value: "pending" });
+    if (!errorRazorpay && !loadingRazorpay && razorpayKey?.keyId) {
+      const loadRazorpayScript = () => {
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.onload = () => setRazorpayLoaded(true);
+        script.onerror = () => toast.error('Failed to load Razorpay SDK');
+        document.body.appendChild(script);
       };
 
-      if (order && !order.isPaid) {
-        if (!window.paypal) {
-          loadingPaPalScript();
-        }
+      if (order && !order.isPaid && !window.Razorpay) {
+        loadRazorpayScript();
       }
     }
-  }, [errorPayPal, loadingPaPal, order, paypal, paypalDispatch]);
+  }, [errorRazorpay, loadingRazorpay, order, razorpayKey]);
 
-  function onApprove(data, actions) {
-    return actions.order.capture().then(async function (details) {
-      try {
-        await payOrder({ orderId, details });
-        refetch();
-        toast.success("Order is paid");
-      } catch (error) {
-        toast.error(error?.data?.message || error.message);
-      }
-    });
-  }
+  const handleRazorpayPayment = async () => {
+    if (!razorpayLoaded || !razorpayKey?.keyId) {
+      toast.error('Razorpay is not loaded yet');
+      return;
+    }
 
-  function createOrder(data, actions) {
-    return actions.order
-      .create({
-        purchase_units: [{ amount: { value: order.totalPrice } }],
-      })
-      .then((orderID) => {
-        return orderID;
-      });
-  }
+    try {
+      
+      const razorpayOrderResponse = await createRazorpayOrder(orderId).unwrap();
 
-  function onError(err) {
-    toast.error(err.message);
-  }
+      const options = {
+        key: razorpayKey.keyId,
+        amount: razorpayOrderResponse.amount,
+        currency: razorpayOrderResponse.currency,
+        name: 'Ecommerce Store',
+        description: `Order ${order._id}`,
+        order_id: razorpayOrderResponse.id,
+        handler: async function (response) {
+          try {
+            
+            await verifyRazorpayPayment({
+              orderId,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            }).unwrap();
+
+            refetch();
+            toast.success("Payment successful! Order is paid");
+          } catch (error) {
+            toast.error(error?.data?.message || error.message || 'Payment verification failed');
+          }
+        },
+        prefill: {
+          name: userInfo?.name || '',
+          email: userInfo?.email || '',
+        },
+        theme: {
+          color: '#F37254'
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      toast.error(error?.data?.message || error.message || 'Failed to create payment order');
+    }
+  };
 
   const deliverHandler = async () => {
     await deliverOrder(orderId);
@@ -204,16 +223,17 @@ const Order = () => {
 
           {!order.isPaid && (
             <div className="border border-gray-300 pb-4 mb-4 rounded-lg p-4">
-              {loadingPay && <Loader />}
-              {isPending ? (
+              {loadingRazorpay ? (
                 <Loader />
               ) : (
                 <div>
-                  <PayPalButtons
-                    createOrder={createOrder}
-                    onApprove={onApprove}
-                    onError={onError}
-                  ></PayPalButtons>
+                  <button
+                    onClick={handleRazorpayPayment}
+                    className="bg-pink-500 text-white py-2 px-4 rounded-full text-lg w-full"
+                    disabled={!razorpayLoaded}
+                  >
+                    Pay with Razorpay
+                  </button>
                 </div>
               )}
             </div>

@@ -29,7 +29,6 @@ const ProductList = () => {
 
     try {
   const productData = new FormData();
-  // image is a URL (string) returned from uploadProductImage or empty
   productData.append("image", image);
       productData.append("name", name);
       productData.append("description", description);
@@ -39,7 +38,6 @@ const ProductList = () => {
       productData.append("brand", brand);
       productData.append("countInStock", stock);
 
-      // Use unwrap() so RTK Query throws on error and returns the created product on success
       try {
         const created = await createProduct(productData).unwrap();
         console.log("createProduct response:", created);
@@ -58,8 +56,6 @@ const ProductList = () => {
   const uploadFileHandler = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    // convert file to data URL (base64) and send as JSON to upload endpoint
     const readFileToDataUrl = (f) =>
       new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -72,7 +68,6 @@ const ProductList = () => {
       const dataUrl = await readFileToDataUrl(file);
       const res = await uploadProductImage({ image: dataUrl }).unwrap();
       toast.success(res.message);
-      // res.image is the Cloudinary secure_url
       setImage(res.image);
       setImageUrl(res.image);
     } catch (error) {

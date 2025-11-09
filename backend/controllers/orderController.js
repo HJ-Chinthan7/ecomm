@@ -1,15 +1,15 @@
 import Order from "../models/orderModel.js";
 import Product from "../models/productModel.js";
+import crypto from 'crypto';
 
-// Utility Function
 function calcPrices(orderItems) {
   const itemsPrice = orderItems.reduce(
     (acc, item) => acc + item.price * item.qty,
     0
   );
 
-  const shippingPrice = itemsPrice > 100 ? 0 : 10;
-  const taxRate = 0.15;
+  const shippingPrice = itemsPrice > 500 ? 0 : 100; 
+  const taxRate = 0.18; 
   const taxPrice = (itemsPrice * taxRate).toFixed(2);
 
   const totalPrice = (
@@ -25,6 +25,100 @@ function calcPrices(orderItems) {
     totalPrice,
   };
 }
+
+const createRazorpayOrder = async (req, res) => {
+  try {
+    const { id: orderId } = req.params;
+
+    if (!orderId) {
+      return res.status(400).json({ error: "Order ID is required" });
+    }
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    if (order.isPaid) {
+      return res.status(400).json({ error: "Order is already paid" });
+    }
+
+    const Razorpay = (await import('razorpay')).default;
+
+    const razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+
+    const options = {
+      amount: Math.round(order.totalPrice * 100), 
+      currency: 'INR',
+      receipt: `receipt_${orderId}`,
+      payment_capture: 1,
+    };
+
+    const razorpayOrder = await razorpay.orders.create(options);
+
+    res.json({
+      id: razorpayOrder.id,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
+      orderId: orderId,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const verifyRazorpayPayment = async (req, res) => {
+  try {
+    const { id: orderId } = req.params;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+    const Razorpay = (await import('razorpay')).default;
+    const razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+
+    
+    const sign = razorpay_order_id + '|' + razorpay_payment_id;
+    const expectedSign = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(sign.toString())
+      .digest('hex');
+
+    if (razorpay_signature !== expectedSign) {
+      return res.status(400).json({ error: 'Payment verification failed' });
+    }
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    order.isPaid = true;
+    order.paidAt = Date.now();
+    order.paymentResult = {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      status: 'completed',
+    };
+
+    const updatedOrder = await order.save();
+
+    res.json({
+      message: 'Payment verified successfully',
+      order: updatedOrder,
+    });
+  } catch (error) {
+    console.error('Payment verification error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
 
 const createOrder = async (req, res) => {
   try {
@@ -165,10 +259,10 @@ const markOrderAsPaid = async (req, res) => {
       order.isPaid = true;
       order.paidAt = Date.now();
       order.paymentResult = {
-        id: req.body.id,
-        status: req.body.status,
-        update_time: req.body.update_time,
-        email_address: req.body.payer.email_address,
+        id: req.body.id || req.body.razorpay_payment_id,
+        status: req.body.status || 'completed',
+        update_time: req.body.update_time || new Date().toISOString(),
+        email_address: req.body.payer?.email_address || req.body.email || '',
       };
 
       const updateOrder = await order.save();
@@ -211,4 +305,6 @@ export {
   findOrderById,
   markOrderAsPaid,
   markOrderAsDelivered,
+  createRazorpayOrder,
+  verifyRazorpayPayment,
 };

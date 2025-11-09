@@ -5,7 +5,7 @@ import { v2 as cloudinary } from "cloudinary";
 const addProduct = asyncHandler(async (req, res) => {
   try {
     const { name, description, price, category, quantity, brand, image } = req.fields;
-console.log("Received product data:", req.fields);
+
     switch (true) {
       case !name:
         return res.status(400).json({ error: "Name is required" });
@@ -24,7 +24,6 @@ console.log("Received product data:", req.fields);
     let imageUrl = "";
     if (image) {
       try {
-        console.log("Uploading product image via Cloudinary (create)...");
         cloudinary.config({
           cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
           api_key: process.env.CLOUDINARY_API_KEY,
@@ -32,7 +31,6 @@ console.log("Received product data:", req.fields);
         });
         const uploadRes = await cloudinary.uploader.upload(image, { folder: "products" });
         imageUrl = uploadRes?.secure_url || "";
-        console.log("Image uploaded to Cloudinary:", imageUrl);
       } catch (uploadErr) {
         console.error("Cloudinary upload (create) failed:", uploadErr?.message || uploadErr);
         return res.status(500).json({ message: "Image upload failed", error: uploadErr?.message });
@@ -44,7 +42,6 @@ console.log("Received product data:", req.fields);
     if (productData.quantity !== undefined) productData.quantity = Number(productData.quantity);
     if (productData.countInStock !== undefined) productData.countInStock = Number(productData.countInStock);
 
-    console.log("Creating product with data:", productData);
 
     try {
       const product = new Product(productData);
@@ -92,7 +89,6 @@ const updateProductDetails = asyncHandler(async (req, res) => {
     let imageUrl = undefined;
     if (image) {
       try {
-        console.log("Uploading product image via Cloudinary (update)...");
         cloudinary.config({
           cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
           api_key: process.env.CLOUDINARY_API_KEY,

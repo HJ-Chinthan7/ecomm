@@ -34,10 +34,9 @@ const Shop = () => {
   useEffect(() => {
     if (!checked.length || !radio.length) {
       if (!filteredProductsQuery.isLoading) {
-        // Filter products based on both checked categories and price filter
+        
         const filteredProducts = filteredProductsQuery.data.filter(
           (product) => {
-            // Check if the product price includes the entered price filter value
             return (
               product.price.toString().includes(priceFilter) ||
               product.price === parseInt(priceFilter, 10)
@@ -64,7 +63,6 @@ const Shop = () => {
     dispatch(setChecked(updatedChecked));
   };
 
-  // Add "All Brands" option to uniqueBrands
   const uniqueBrands = [
     ...Array.from(
       new Set(
@@ -76,7 +74,6 @@ const Shop = () => {
   ];
 
   const handlePriceChange = (e) => {
-    // Update the price filter state when the user types in the input filed
     setPriceFilter(e.target.value);
   };
 

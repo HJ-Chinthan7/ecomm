@@ -122,7 +122,7 @@ const PlaceOrder = () => {
 
             <div>
               <h2 className="text-2xl font-semibold mb-4">Payment Method</h2>
-              <strong>Method:</strong> {cart.paymentMethod}
+              <strong>Method:</strong> {cart.paymentMethod === "PayPal" ? "Razorpay" : cart.paymentMethod}
             </div>
           </div>
 
