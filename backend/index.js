@@ -27,7 +27,7 @@ app.use(cookieParser());
 
 const allowedOrigins = [
   process.env.FRONTEND_URL, 
-  "http://localhost:5173", 
+  "http://localhost:5173","http://localhost:5002"
 ].filter(Boolean);
 
 const corsOptions = {

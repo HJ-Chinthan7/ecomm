@@ -77,6 +77,14 @@ export const orderApiSlice = apiSlice.injectEndpoints({
     getTotalSalesByDate: builder.query({
       query: () => `${ORDERS_URL}/total-sales-by-date`,
     }),
+
+    updateShippingAddress: builder.mutation({
+      query: ({ orderId, shippingAddress }) => ({
+        url: `${ORDERS_URL}/${orderId}/update-address`,
+        method: "PUT",
+        body: shippingAddress,
+      }),
+    }),
   }),
 });
 
@@ -84,7 +92,7 @@ export const {
   useGetTotalOrdersQuery,
   useGetTotalSalesQuery,
   useGetTotalSalesByDateQuery,
-  
+
   useCreateOrderMutation,
   useGetOrderDetailsQuery,
   usePayOrderMutation,
@@ -94,4 +102,5 @@ export const {
   useGetMyOrdersQuery,
   useDeliverOrderMutation,
   useGetOrdersQuery,
+  useUpdateShippingAddressMutation,
 } = orderApiSlice;

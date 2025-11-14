@@ -4,12 +4,14 @@ import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import Messsage from "../../components/Message";
 import Loader from "../../components/Loader";
+import Modal from "../../components/Modal";
 import {
   useDeliverOrderMutation,
   useGetOrderDetailsQuery,
   useGetRazorpayKeyIdQuery,
   useCreateRazorpayOrderMutation,
   useVerifyRazorpayPaymentMutation,
+  useUpdateShippingAddressMutation,
 } from "../../redux/api/orderApiSlice";
 
 const Order = () => {
@@ -26,6 +28,8 @@ const Order = () => {
   const [verifyRazorpayPayment] = useVerifyRazorpayPaymentMutation();
   const [deliverOrder, { isLoading: loadingDeliver }] =
     useDeliverOrderMutation();
+  const [updateShippingAddress, { isLoading: loadingUpdate }] =
+    useUpdateShippingAddressMutation();
   const { userInfo } = useSelector((state) => state.auth);
 
   const {
@@ -35,6 +39,15 @@ const Order = () => {
   } = useGetRazorpayKeyIdQuery();
 
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newAddress, setNewAddress] = useState({
+    address: "",
+    city: "",
+    district: "",
+    state: "",
+    postalCode: "",
+    country: "",
+  });
 
   useEffect(() => {
     if (!errorRazorpay && !loadingRazorpay && razorpayKey?.keyId) {
@@ -123,6 +136,28 @@ const Order = () => {
     refetch();
   };
 
+  const handleUpdateAddress = async () => {
+    try {
+      await updateShippingAddress({
+        orderId,
+        shippingAddress: newAddress,
+      }).unwrap();
+      refetch();
+      setIsModalOpen(false);
+      setNewAddress({
+        address: "",
+        city: "",
+        district: "",
+        state: "",
+        postalCode: "",
+        country: "",
+      });
+      toast.success("Address updated successfully");
+    } catch (error) {
+      toast.error(error?.data?.message || error.message || "Failed to update address");
+    }
+  };
+
   return isLoading ? (
     <Loader />
   ) : error ? (
@@ -198,7 +233,7 @@ const Order = () => {
               <p>
                 <strong className="text-pink-500">Address:</strong>{" "}
                 <span className="break-words">
-                  {order.shippingAddress.address}, {order.shippingAddress.city}{" "}
+                  {order.shippingAddress.address}, {order.shippingAddress.city}, {order.shippingAddress.district}, {order.shippingAddress.state}{" "}
                   {order.shippingAddress.postalCode}, {order.shippingAddress.country}
                 </span>
               </p>
@@ -207,6 +242,13 @@ const Order = () => {
                 <strong className="text-pink-500">Method:</strong>{" "}
                 {order.paymentMethod}
               </p>
+
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="bg-pink-500 text-white py-2 px-4 rounded-full text-sm hover:bg-pink-600 transition-colors mt-2"
+              >
+                Update Address
+              </button>
 
               {order.isPaid ? (
                 <Messsage variant="success">Paid on {order.paidAt}</Messsage>
@@ -293,6 +335,93 @@ const Order = () => {
           )}
         </div>
       </div>
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+        <div className="p-4">
+          <h2 className="text-xl font-bold mb-4">Update Shipping Address</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Address</label>
+              <input
+                type="text"
+                value={newAddress.address}
+                onChange={(e) => setNewAddress({ ...newAddress, address: e.target.value })}
+                className="w-full p-2 border border-gray-300 rounded"
+                placeholder="Enter address"
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">City</label>
+                <input
+                  type="text"
+                  value={newAddress.city}
+                  onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
+                  className="w-full p-2 border border-gray-300 rounded"
+                  placeholder="Enter city"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">District</label>
+                <input
+                  type="text"
+                  value={newAddress.district}
+                  onChange={(e) => setNewAddress({ ...newAddress, district: e.target.value })}
+                  className="w-full p-2 border border-gray-300 rounded"
+                  placeholder="Enter district"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">State</label>
+                <input
+                  type="text"
+                  value={newAddress.state}
+                  onChange={(e) => setNewAddress({ ...newAddress, state: e.target.value })}
+                  className="w-full p-2 border border-gray-300 rounded"
+                  placeholder="Enter state"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Postal Code</label>
+                <input
+                  type="text"
+                  value={newAddress.postalCode}
+                  onChange={(e) => setNewAddress({ ...newAddress, postalCode: e.target.value })}
+                  className="w-full p-2 border border-gray-300 rounded"
+                  placeholder="Enter postal code"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Country</label>
+              <input
+                type="text"
+                value={newAddress.country}
+                onChange={(e) => setNewAddress({ ...newAddress, country: e.target.value })}
+                className="w-full p-2 border border-gray-300 rounded"
+                placeholder="Enter country"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="bg-gray-500 text-white py-2 px-4 rounded hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateAddress}
+                disabled={loadingUpdate}
+                className="bg-pink-500 text-white py-2 px-4 rounded hover:bg-pink-600 transition-colors disabled:opacity-50"
+              >
+                {loadingUpdate ? "Updating..." : "Update Address"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

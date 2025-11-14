@@ -11,7 +11,6 @@ import PrivateRoute from "./components/PrivateRoute";
 // Auth
 import Login from "./pages/Auth/Login";
 import Register from "./pages/Auth/Register";
-
 import AdminRoute from "./pages/Admin/AdminRoute";
 import Profile from "./pages/User/Profile";
 import UserList from "./pages/Admin/UserList";
@@ -29,6 +28,7 @@ import ProductDetails from "./pages/Products/ProductDetails.jsx";
 import Cart from "./pages/Cart.jsx";
 import Shop from "./pages/Shop.jsx";
 
+import UserOrder from "./pages/User/UserOrder";
 import Shipping from "./pages/Orders/Shipping.jsx";
 import PlaceOrder from "./pages/Orders/PlaceOrder.jsx";
 import Order from "./pages/Orders/Order.jsx";
@@ -52,6 +52,7 @@ const router = createBrowserRouter(
         <Route path="/shipping" element={<Shipping />} />
         <Route path="/placeorder" element={<PlaceOrder />} />
         <Route path="/order/:id" element={<Order />} />
+        <Route path="/myorders" element={<UserOrder />}/>
       </Route>
 
       <Route path="/admin" element={<AdminRoute />}>

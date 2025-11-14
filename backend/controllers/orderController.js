@@ -8,8 +8,8 @@ function calcPrices(orderItems) {
     0
   );
 
-  const shippingPrice = itemsPrice > 500 ? 0 : 100; 
-  const taxRate = 0.18; 
+  const shippingPrice = itemsPrice > 500 ? 0 : 100;
+  const taxRate = 0.18;
   const taxPrice = (itemsPrice * taxRate).toFixed(2);
 
   const totalPrice = (
@@ -27,6 +27,7 @@ function calcPrices(orderItems) {
 }
 
 const createRazorpayOrder = async (req, res) => {
+  console.log("in payment")
   try {
     const { id: orderId } = req.params;
 
@@ -52,7 +53,7 @@ const createRazorpayOrder = async (req, res) => {
     });
 
     const options = {
-      amount: Math.round(order.totalPrice * 100), 
+      amount: Math.round(order.totalPrice * 100),
       currency: 'INR',
       receipt: `receipt_${orderId}`,
       payment_capture: 1,
@@ -82,7 +83,7 @@ const verifyRazorpayPayment = async (req, res) => {
       key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
 
-    
+
     const sign = razorpay_order_id + '|' + razorpay_payment_id;
     const expectedSign = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
@@ -122,32 +123,32 @@ const verifyRazorpayPayment = async (req, res) => {
 
 const createOrder = async (req, res) => {
   try {
+    console.log("order here")
     const { orderItems, shippingAddress, paymentMethod } = req.body;
 
-    if (orderItems && orderItems.length === 0) {
-      res.status(400);
-      throw new Error("No order items");
+    if (!orderItems || orderItems.length === 0) {
+      return res.status(400).json({ message: "No order items" });
     }
 
     const itemsFromDB = await Product.find({
-      _id: { $in: orderItems.map((x) => x._id) },
+      _id: { $in: orderItems.map((x) => x.product) },
     });
 
-    const dbOrderItems = orderItems.map((itemFromClient) => {
-      const matchingItemFromDB = itemsFromDB.find(
-        (itemFromDB) => itemFromDB._id.toString() === itemFromClient._id
+    const dbOrderItems = orderItems.map((clientItem) => {
+      const productFromDB = itemsFromDB.find(
+        (p) => p._id.toString() === clientItem.product
       );
 
-      if (!matchingItemFromDB) {
-        res.status(404);
-        throw new Error(`Product not found: ${itemFromClient._id}`);
+      if (!productFromDB) {
+        throw new Error("Product not found: " + clientItem.product);
       }
 
       return {
-        ...itemFromClient,
-        product: itemFromClient._id,
-        price: matchingItemFromDB.price,
-        _id: undefined,
+        name: clientItem.name,
+        qty: clientItem.qty,
+        image: clientItem.image,
+        price: productFromDB.price,
+        product: clientItem.product,
       };
     });
 
@@ -163,10 +164,19 @@ const createOrder = async (req, res) => {
       taxPrice,
       shippingPrice,
       totalPrice,
+
+      parcelId: null,
+      isDispatched: false,
+      isPaid: false,
+      paidAt: null,
+      isDelivered: false,
+      deliveredAt: null,
     });
 
     const createdOrder = await order.save();
+console.log("here after createdorder")
     res.status(201).json(createdOrder);
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -174,7 +184,63 @@ const createOrder = async (req, res) => {
 
 const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find({}).populate("user", "id username");
+    const orders = await Order.find({  }).populate("user", "id username");
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const updateOrderParcelId = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { parcelId } = req.body;
+    if (!parcelId) {
+      return res.status(400).json({ message: "parcelId is required" });
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      { parcelId },
+      { new: true }
+    ).populate("user", "id username");
+
+    if (!updatedOrder) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    res.json({
+      success: true,
+      message: "Parcel ID updated successfully",
+      order: updatedOrder,
+    });
+
+  } catch (error) {
+    console.error("Update order error:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getOrderById = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const order = await Order.findById(orderId)
+      .populate("user", "_id username");
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    res.json(order);
+
+  } catch (error) {
+    console.error("Error fetching order:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getAllOrdersForTrack = async (req, res) => {
+  try {
+    const orders = await Order.find({parcelId: null}).populate("user", "id username ");
     res.json(orders);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -184,6 +250,7 @@ const getAllOrders = async (req, res) => {
 const getUserOrders = async (req, res) => {
   try {
     const orders = await Order.find({ user: req.user._id });
+    console.log(orders);
     res.json(orders);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -295,6 +362,33 @@ const markOrderAsDelivered = async (req, res) => {
   }
 };
 
+const updateShippingAddress = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (order) {
+      const { address, city, district, state, postalCode, country } = req.body;
+
+      order.shippingAddress = {
+        address: address || order.shippingAddress.address,
+        city: city || order.shippingAddress.city,
+        district: district || order.shippingAddress.district,
+        state: state || order.shippingAddress.state,
+        postalCode: postalCode || order.shippingAddress.postalCode,
+        country: country || order.shippingAddress.country,
+      };
+
+      const updatedOrder = await order.save();
+      res.json(updatedOrder);
+    } else {
+      res.status(404);
+      throw new Error("Order not found");
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export {
   createOrder,
   getAllOrders,
@@ -307,4 +401,8 @@ export {
   markOrderAsDelivered,
   createRazorpayOrder,
   verifyRazorpayPayment,
+  updateShippingAddress,
+  getAllOrdersForTrack,
+  getOrderById,
+  updateOrderParcelId,
 };

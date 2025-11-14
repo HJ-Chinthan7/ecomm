@@ -13,6 +13,10 @@ import {
   markOrderAsDelivered,
   createRazorpayOrder,
   verifyRazorpayPayment,
+  updateShippingAddress,
+  getAllOrdersForTrack,
+  getOrderById,
+  updateOrderParcelId,
 } from "../controllers/orderController.js";
 
 import { authenticate, authorizeAdmin } from "../middlewares/authMiddleware.js";
@@ -21,7 +25,9 @@ router
   .route("/")
   .post(authenticate, createOrder)
   .get(authenticate, authorizeAdmin, getAllOrders);
-
+router.route("/trackingcall-for-order").get(getAllOrdersForTrack);
+router.route("/orderbyid/:orderId").get(getOrderById);
+router.route("/order-parcelid-update/:orderId").patch(updateOrderParcelId);
 router.route("/mine").get(authenticate, getUserOrders);
 router.route("/total-orders").get(countTotalOrders);
 router.route("/total-sales").get(calculateTotalSales);
@@ -33,5 +39,9 @@ router.route("/:id/verify-razorpay-payment").post(authenticate, verifyRazorpayPa
 router
   .route("/:id/deliver")
   .put(authenticate, authorizeAdmin, markOrderAsDelivered);
+
+router
+  .route("/:id/update-address")
+  .put(authenticate, updateShippingAddress);
 
 export default router;
