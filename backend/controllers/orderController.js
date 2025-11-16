@@ -1,7 +1,7 @@
 import Order from "../models/orderModel.js";
 import Product from "../models/productModel.js";
 import crypto from 'crypto';
-
+import axios from "axios";
 function calcPrices(orderItems) {
   const itemsPrice = orderItems.reduce(
     (acc, item) => acc + item.price * item.qty,
@@ -26,8 +26,7 @@ function calcPrices(orderItems) {
   };
 }
 
-const createRazorpayOrder = async (req, res) => {
-  console.log("in payment")
+ const createRazorpayOrder = async (req, res) => {
   try {
     const { id: orderId } = req.params;
 
@@ -45,16 +44,24 @@ const createRazorpayOrder = async (req, res) => {
       return res.status(400).json({ error: "Order is already paid" });
     }
 
-    const Razorpay = (await import('razorpay')).default;
+    const Razorpay = (await import("razorpay")).default;
 
     const razorpay = new Razorpay({
       key_id: process.env.RAZORPAY_KEY_ID,
       key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
 
+    const amountInPaise = Math.round(order.totalPrice * 100);
+
+    if (amountInPaise > 10000000) {
+      return res
+        .status(400)
+        .json({ error: "Amount exceeds maximum limit for Razorpay" });
+    }
+
     const options = {
-      amount: Math.round(order.totalPrice * 100),
-      currency: 'INR',
+      amount: amountInPaise,
+      currency: "INR",
       receipt: `receipt_${orderId}`,
       payment_capture: 1,
     };
@@ -68,9 +75,11 @@ const createRazorpayOrder = async (req, res) => {
       orderId: orderId,
     });
   } catch (error) {
+    console.error("Razorpay order creation error:", error);
     res.status(500).json({ error: error.message });
   }
 };
+
 
 const verifyRazorpayPayment = async (req, res) => {
   try {
@@ -120,38 +129,40 @@ const verifyRazorpayPayment = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 const createOrder = async (req, res) => {
   try {
-    console.log("order here")
     const { orderItems, shippingAddress, paymentMethod } = req.body;
 
     if (!orderItems || orderItems.length === 0) {
       return res.status(400).json({ message: "No order items" });
     }
 
+    const normalizedItems = orderItems.map((item) => ({
+      ...item,
+      productId: item.product || item._id, 
+    }));
+
     const itemsFromDB = await Product.find({
-      _id: { $in: orderItems.map((x) => x.product) },
+      _id: { $in: normalizedItems.map((x) => x.productId) },
     });
 
-    const dbOrderItems = orderItems.map((clientItem) => {
+    const dbOrderItems = normalizedItems.map((clientItem) => {
       const productFromDB = itemsFromDB.find(
-        (p) => p._id.toString() === clientItem.product
+        (p) => p._id.toString() === clientItem.productId
       );
 
       if (!productFromDB) {
-        throw new Error("Product not found: " + clientItem.product);
+        throw new Error("Product not found: " + clientItem.productId);
       }
 
       return {
-        name: clientItem.name,
+        name: clientItem.name || productFromDB.name,
         qty: clientItem.qty,
-        image: clientItem.image,
+        image: clientItem.image || productFromDB.image,
         price: productFromDB.price,
-        product: clientItem.product,
+        product: productFromDB._id,
       };
     });
-
     const { itemsPrice, taxPrice, shippingPrice, totalPrice } =
       calcPrices(dbOrderItems);
 
@@ -164,7 +175,6 @@ const createOrder = async (req, res) => {
       taxPrice,
       shippingPrice,
       totalPrice,
-
       parcelId: null,
       isDispatched: false,
       isPaid: false,
@@ -174,10 +184,10 @@ const createOrder = async (req, res) => {
     });
 
     const createdOrder = await order.save();
-console.log("here after createdorder")
-    res.status(201).json(createdOrder);
 
+    res.status(201).json(createdOrder);
   } catch (error) {
+    console.error("Order creation error:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -224,13 +234,14 @@ const updateOrderParcelId = async (req, res) => {
 const getOrderById = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const order = await Order.findById(orderId)
+
+    let order = await Order.findById(orderId)
       .populate("user", "_id username");
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
-    res.json(order);
+res.json({order});
 
   } catch (error) {
     console.error("Error fetching order:", error);
@@ -307,8 +318,25 @@ const findOrderById = async (req, res) => {
       "username email"
     );
 
+    let parcelData = null;
+
+     if (order.parcelId) {
+      try {
+        const response = await axios.get(
+          `${process.env.TRACKING_BACKEND_URL}/api/assigner/parcels/${order.parcelId}`
+        );
+
+        parcelData = response.data;
+      } catch (err) {
+        console.log("Parcel fetch failed:", err.message);
+      }
+    }
+    
     if (order) {
-      res.json(order);
+    res.json({
+      order,
+      parcel: parcelData, 
+    });
     } else {
       res.status(404);
       throw new Error("Order not found");
@@ -362,32 +390,98 @@ const markOrderAsDelivered = async (req, res) => {
   }
 };
 
-const updateShippingAddress = async (req, res) => {
+const updateShippingAddressBoth = async (req, res) => {
+  const orderId = req.params.id;
+  const newAddress = req.body;
+  let updatedParcel = null;
+  let parcelUpdated = false;
+
   try {
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ message: "Order not found" });
 
-    if (order) {
-      const { address, city, district, state, postalCode, country } = req.body;
+    const parcelId = order.parcelId;
 
+    if (parcelId) {
+      try {
+        const parcelRes = await axios.get(
+          `${process.env.TRACKING_BACKEND_URL}/api/assigner/parcels/${parcelId}`
+        );
+
+        const parcelData = parcelRes.data;
+
+        const updatedParcelPayload = {
+          ...parcelData,
+          shippingAddress: {
+            ...parcelData.shippingAddress,
+            ...newAddress,
+          },
+          isAddressChanged: true,
+        };
+
+        const savedParcel = await axios.put(
+          `${process.env.TRACKING_BACKEND_URL}/api/assigner/update-address/${parcelId}`,
+          updatedParcelPayload
+        );
+
+        updatedParcel = savedParcel.data;
+        parcelUpdated = true;
+
+      } catch (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Parcel update failed. Order NOT updated.",
+          error: err.message
+        });
+      }
+    }
+
+    const oldOrderAddress = { ...order.shippingAddress };
+
+    try {
       order.shippingAddress = {
-        address: address || order.shippingAddress.address,
-        city: city || order.shippingAddress.city,
-        district: district || order.shippingAddress.district,
-        state: state || order.shippingAddress.state,
-        postalCode: postalCode || order.shippingAddress.postalCode,
-        country: country || order.shippingAddress.country,
+        ...order.shippingAddress,
+        ...newAddress,
       };
 
-      const updatedOrder = await order.save();
-      res.json(updatedOrder);
-    } else {
-      res.status(404);
-      throw new Error("Order not found");
+      await order.save();
+    } catch (orderErr) {
+
+      if (parcelUpdated && parcelId) {
+        try {
+          await axios.put(
+            `${process.env.TRACKING_BACKEND_URL}/api/assigner/update-address/${parcelId}`,
+            {
+              ...updatedParcel,
+              shippingAddress: oldOrderAddress,
+              isAddressChanged: false
+            }
+          );
+        } catch (rollbackErr) {
+          console.log("ROLLBACK FAILED!", rollbackErr.message);
+        }
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: "Order update failed. Parcel changes rolled back.",
+        error: orderErr.message
+      });
     }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+
+    return res.json({
+      success: true,
+      message: "Shipping address updated in both Order and Parcel",
+      order,
+      parcelUpdated,
+      parcel: updatedParcel,
+    });
+
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
   }
 };
+
 
 export {
   createOrder,
@@ -401,8 +495,8 @@ export {
   markOrderAsDelivered,
   createRazorpayOrder,
   verifyRazorpayPayment,
-  updateShippingAddress,
   getAllOrdersForTrack,
   getOrderById,
   updateOrderParcelId,
+  updateShippingAddressBoth,
 };

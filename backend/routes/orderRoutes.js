@@ -13,10 +13,10 @@ import {
   markOrderAsDelivered,
   createRazorpayOrder,
   verifyRazorpayPayment,
-  updateShippingAddress,
   getAllOrdersForTrack,
   getOrderById,
   updateOrderParcelId,
+  updateShippingAddressBoth
 } from "../controllers/orderController.js";
 
 import { authenticate, authorizeAdmin } from "../middlewares/authMiddleware.js";
@@ -42,6 +42,7 @@ router
 
 router
   .route("/:id/update-address")
-  .put(authenticate, updateShippingAddress);
+  .put(authenticate, updateShippingAddressBoth);
+
 
 export default router;

@@ -18,12 +18,12 @@ const Order = () => {
   const { id: orderId } = useParams();
 
   const {
-    data: order,
+    data,
     refetch,
     isLoading,
     error,
   } = useGetOrderDetailsQuery(orderId);
-
+const order = data?.order;
   const [createRazorpayOrder] = useCreateRazorpayOrderMutation();
   const [verifyRazorpayPayment] = useVerifyRazorpayPaymentMutation();
   const [deliverOrder, { isLoading: loadingDeliver }] =

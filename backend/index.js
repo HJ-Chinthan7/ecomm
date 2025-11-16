@@ -27,7 +27,7 @@ app.use(cookieParser());
 
 const allowedOrigins = [
   process.env.FRONTEND_URL, 
-  "http://localhost:5173","http://localhost:5002"
+  "http://localhost:5173","http://localhost:5002","https://ecommerce-delivery-tracking.onrender.com",
 ].filter(Boolean);
 
 const corsOptions = {

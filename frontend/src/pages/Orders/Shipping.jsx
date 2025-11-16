@@ -12,12 +12,14 @@ const Shipping = () => {
   const { shippingAddress } = cart;
 
   const [paymentMethod, setPaymentMethod] = useState("Razorpay");
+
   const [address, setAddress] = useState(shippingAddress.address || "");
   const [city, setCity] = useState(shippingAddress.city || "");
-  const [postalCode, setPostalCode] = useState(
-    shippingAddress.postalCode || ""
-  );
+  const [postalCode, setPostalCode] = useState(shippingAddress.postalCode || "");
   const [country, setCountry] = useState(shippingAddress.country || "");
+
+  const [state, setState] = useState(shippingAddress.state || "");
+  const [district, setDistrict] = useState(shippingAddress.district || "");
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -25,8 +27,19 @@ const Shipping = () => {
   const submitHandler = (e) => {
     e.preventDefault();
 
-    dispatch(saveShippingAddress({ address, city, postalCode, country }));
+    dispatch(
+      saveShippingAddress({
+        address,
+        city,
+        postalCode,
+        country,
+        state,
+        district,
+      })
+    );
+
     dispatch(savePaymentMethod(paymentMethod));
+
     navigate("/placeorder");
   };
 
@@ -42,6 +55,7 @@ const Shipping = () => {
       <div className="mt-[10rem] flex justify-around items-center flex-wrap">
         <form onSubmit={submitHandler} className="w-[40rem]">
           <h1 className="text-2xl font-semibold mb-4">Shipping</h1>
+
           <div className="mb-4">
             <label className="block text-white mb-2">Address</label>
             <input
@@ -53,6 +67,7 @@ const Shipping = () => {
               onChange={(e) => setAddress(e.target.value)}
             />
           </div>
+
           <div className="mb-4">
             <label className="block text-white mb-2">City</label>
             <input
@@ -64,6 +79,31 @@ const Shipping = () => {
               onChange={(e) => setCity(e.target.value)}
             />
           </div>
+
+          <div className="mb-4">
+            <label className="block text-white mb-2">District</label>
+            <input
+              type="text"
+              className="w-full p-2 border rounded"
+              placeholder="Enter district"
+              value={district}
+              required
+              onChange={(e) => setDistrict(e.target.value)}
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-white mb-2">State</label>
+            <input
+              type="text"
+              className="w-full p-2 border rounded"
+              placeholder="Enter state"
+              value={state}
+              required
+              onChange={(e) => setState(e.target.value)}
+            />
+          </div>
+
           <div className="mb-4">
             <label className="block text-white mb-2">Postal Code</label>
             <input
@@ -75,6 +115,7 @@ const Shipping = () => {
               onChange={(e) => setPostalCode(e.target.value)}
             />
           </div>
+
           <div className="mb-4">
             <label className="block text-white mb-2">Country</label>
             <input
@@ -86,6 +127,7 @@ const Shipping = () => {
               onChange={(e) => setCountry(e.target.value)}
             />
           </div>
+
           <div className="mb-4">
             <label className="block text-gray-400">Select Method</label>
             <div className="mt-2">
@@ -98,7 +140,6 @@ const Shipping = () => {
                   checked={paymentMethod === "Razorpay"}
                   onChange={(e) => setPaymentMethod(e.target.value)}
                 />
-
                 <span className="ml-2">Razorpay</span>
               </label>
             </div>
