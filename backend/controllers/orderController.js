@@ -322,11 +322,13 @@ const findOrderById = async (req, res) => {
 
      if (order.parcelId) {
       try {
+        
+console.log(TRACKING_BACKEND_URL);
         const response = await axios.get(
           `${process.env.TRACKING_BACKEND_URL}/api/assigner/parcels/${order.parcelId}`
         );
-
         parcelData = response.data;
+        console.log(parcelData);
       } catch (err) {
         console.log("Parcel fetch failed:", err.message);
       }
