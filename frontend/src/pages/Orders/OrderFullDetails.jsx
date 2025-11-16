@@ -6,6 +6,11 @@ const OrderFullDetails = () => {
   const { id } = useParams();
   const { data: order, isLoading } = useGetOrderDetailsQuery(id);
   const [updateAddress] = useUpdateShippingAddressMutation();
+  
+console.log("order.order.parcelId",order.order.parcelId)
+console.log("order.order.parcel.busId",order.order.parcel.busId)
+console.log("order.order.parcel.busId",order.order.parcel.busId)
+
   const [form, setForm] = useState({
     address: "",
     city: "",
@@ -24,12 +29,6 @@ const OrderFullDetails = () => {
     alert("Address updated!");
   };
   if (isLoading) return <p>Loading...</p>;
-console.log("order.order.parcelId",order.order.parcelId)
-console.log("order.order.parcel.busId",order.order.parcel.busId)
-console.log("order.order.parcel.busId",order.order.parcel.busId)
-console.log("",)
-console.log("",)
-console.log("",)
   const trackingLink =
    order.order.parcelId&&order.order.parcel.busId
       ? `https://real-time-trackingofbuses.netlify.app/track/${order.order.parcel.busId}`
