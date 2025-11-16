@@ -26,7 +26,7 @@ const OrderFullDetails = () => {
   if (isLoading) return <p>Loading...</p>;
 
   const trackingLink =
-   order.order.parcelId&&order.parcel.busId
+   order.order.parcelId&&order.order.parcel.busId
       ? `https://real-time-trackingofbuses.netlify.app/track/${order.order.parcel.busId}`
       : null;
 
