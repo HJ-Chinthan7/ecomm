@@ -32,8 +32,7 @@ const OrderFullDetails = () => {
 //       : null;
 
 console.log("order.order.parcelId",order.order.parcelId)
-console.log("order.order.parcel.busId",order.order.parcel.busId)
-console.log("order.order.parcel.busId",order.order.parcel.busId)
+console.log("order.order.parcel.busId",order)
   return (
     <div className="container mx-auto p-4 space-y-4">
 
