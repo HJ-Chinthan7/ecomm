@@ -7,9 +7,6 @@ const OrderFullDetails = () => {
   const { data: order, isLoading } = useGetOrderDetailsQuery(id);
   const [updateAddress] = useUpdateShippingAddressMutation();
   
-console.log("order.order.parcelId",order.order.parcelId)
-console.log("order.order.parcel.busId",order.order.parcel.busId)
-console.log("order.order.parcel.busId",order.order.parcel.busId)
 
   const [form, setForm] = useState({
     address: "",
@@ -29,11 +26,14 @@ console.log("order.order.parcel.busId",order.order.parcel.busId)
     alert("Address updated!");
   };
   if (isLoading) return <p>Loading...</p>;
-  const trackingLink =
-   order.order.parcelId&&order.order.parcel.busId
-      ? `https://real-time-trackingofbuses.netlify.app/track/${order.order.parcel.busId}`
-      : null;
+//   const trackingLink =
+//    order.order.parcelId&&order.order.parcel.busId
+//       ? `https://real-time-trackingofbuses.netlify.app/track/${order.order.parcel.busId}`
+//       : null;
 
+console.log("order.order.parcelId",order.order.parcelId)
+console.log("order.order.parcel.busId",order.order.parcel.busId)
+console.log("order.order.parcel.busId",order.order.parcel.busId)
   return (
     <div className="container mx-auto p-4 space-y-4">
 
@@ -69,7 +69,7 @@ console.log("order.order.parcel.busId",order.order.parcel.busId)
           <p className="text-lg font-semibold">Tracking ID:</p>
           <p>{order.order.parcel.busId}</p>
 
-          {trackingLink && (
+          {/* {trackingLink && (
             <Link
               to={trackingLink}
               className="text-blue-500 underline"
@@ -77,7 +77,7 @@ console.log("order.order.parcel.busId",order.order.parcel.busId)
             >
               Track Package
             </Link>
-          )}
+          )} */}
         </div>
       ) : (
         <p>Package not yet dispatched</p>
