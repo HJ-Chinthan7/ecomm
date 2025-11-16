@@ -49,7 +49,6 @@ const OrderFullDetails = () => {
           </div>
         ))}
       </div>
-
       <div>
         <h2 className="text-xl font-semibold">Shipping Address</h2>
         <p>{order.order.shippingAddress.address}</p>
@@ -60,8 +59,8 @@ const OrderFullDetails = () => {
         <p>{order.order.shippingAddress.postalCode}</p>
         <p>{order.order.shippingAddress.country}</p>
       </div>
-
-      {order.parcelId ? (
+  
+      {order?.order?.parcelId ? (
         <div>
           <p className="text-lg font-semibold">Tracking ID:</p>
           <p>{order?.parcel?.busId}</p>
