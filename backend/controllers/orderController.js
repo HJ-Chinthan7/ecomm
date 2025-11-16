@@ -313,7 +313,6 @@ const calcualteTotalSalesByDate = async (req, res) => {
 
 const findOrderById = async (req, res) => {
   
-console.log(TRACKING_BACKEND_URL);
   try {
     const order = await Order.findById(req.params.id).populate(
       "user",
