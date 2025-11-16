@@ -26,13 +26,11 @@ const OrderFullDetails = () => {
     alert("Address updated!");
   };
   if (isLoading) return <p>Loading...</p>;
-//   const trackingLink =
-//    order.order.parcelId&&order.parcel.busId
-//       ? `https://real-time-trackingofbuses.netlify.app/track/${order.parcel.busId}`
-//       : null;
+  const trackingLink =
+   order?.order?.parcelId&&order?.parcel?.busId
+      ? `https://real-time-trackingofbuses.netlify.app/track/${order?.parcel?.busId}`
+      : null;
 
-console.log("order.order.parcelId",order.order.parcelId)
-console.log("order.order.parcel.busId",order)
   return (
     <div className="container mx-auto p-4 space-y-4">
 
@@ -40,7 +38,7 @@ console.log("order.order.parcel.busId",order)
 
       <div>
         <h2 className="text-xl font-semibold mb-2">Products</h2>
-        {order.order.orderItems.map((item) => (
+        {order?.order?.orderItems.map((item) => (
           <div key={item._id} className="flex items-center gap-4 border p-3 rounded mb-2">
             <img src={item.image} className="w-20" />
             <div>
@@ -66,9 +64,9 @@ console.log("order.order.parcel.busId",order)
       {order.parcelId ? (
         <div>
           <p className="text-lg font-semibold">Tracking ID:</p>
-          <p>{order.parcel.busId}</p>
+          <p>{order?.parcel?.busId}</p>
 
-          {/* {trackingLink && (
+          {trackingLink && (
             <Link
               to={trackingLink}
               className="text-blue-500 underline"
@@ -76,7 +74,7 @@ console.log("order.order.parcel.busId",order)
             >
               Track Package
             </Link>
-          )} */}
+          )}
         </div>
       ) : (
         <p>Package not yet dispatched</p>
