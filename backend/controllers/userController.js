@@ -167,7 +167,42 @@ const updateUserById = asyncHandler(async (req, res) => {
   }
 });
 
+
+const getUsersByIds = async (req, res) => {
+  try {
+    const { userIds } = req.body;
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ message: "userIds array is required" });
+    }
+
+    const users = await User.find({ _id: { $in: userIds } }).select("username email");
+
+    res.json({
+      success: true,
+      data: users,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+const getParcelUsers = asyncHandler(async (req, res) => {
+  const { userIds } = req.body; 
+  if (!Array.isArray(userIds) || userIds.length === 0) {
+    return res.status(400).json({ message: "Send some userIds bro 😭" });
+  }
+
+  const users = await User.find({ _id: { $in: userIds } })
+    .select("email username ");
+
+  res.json(users);
+});
+
+
 export {
+  getUsersByIds,
   createUser,
   loginUser,
   logoutCurrentUser,
@@ -177,4 +212,5 @@ export {
   deleteUserById,
   getUserById,
   updateUserById,
+  getParcelUsers
 };

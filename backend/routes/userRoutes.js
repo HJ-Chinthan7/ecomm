@@ -9,6 +9,8 @@ import {
   deleteUserById,
   getUserById,
   updateUserById,
+  getUsersByIds,
+  getParcelUsers,
 } from "../controllers/userController.js";
 
 import { authenticate, authorizeAdmin } from "../middlewares/authMiddleware.js";
@@ -35,4 +37,9 @@ router
   .get(authenticate, authorizeAdmin, getUserById)
   .put(authenticate, authorizeAdmin, updateUserById);
 
+router
+  .route("/batch")
+  .post(getUsersByIds);
+
+router.route("/getParcelUsers").post(getParcelUsers)
 export default router;
