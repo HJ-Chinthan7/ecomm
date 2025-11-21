@@ -484,7 +484,33 @@ const updateShippingAddressBoth = async (req, res) => {
 };
 
 
+const markOrderDeliveredByOrderId = async (req, res) => {
+  const { orderId } = req.body;
+
+  if (!orderId) {
+    return res.status(400).json({ message: "orderId missing" });
+  }
+
+  const order = await Order.findById(orderId);
+
+  if (!order) {
+    return res.status(404).json({ message: "Order not found" });
+  }
+
+  order.isDelivered = true;
+  order.deliveredAt = new Date();
+
+  await order.save();
+
+  res.json({
+    success: true,
+    message: "Order delivery updated",
+    order,
+  })
+};
+
 export {
+  markOrderDeliveredByOrderId,
   createOrder,
   getAllOrders,
   getUserOrders,

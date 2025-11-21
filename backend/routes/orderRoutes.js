@@ -16,7 +16,7 @@ import {
   getAllOrdersForTrack,
   getOrderById,
   updateOrderParcelId,
-  updateShippingAddressBoth
+  updateShippingAddressBoth,markOrderDeliveredByOrderId
 } from "../controllers/orderController.js";
 
 import { authenticate, authorizeAdmin } from "../middlewares/authMiddleware.js";
@@ -43,6 +43,9 @@ router
 router
   .route("/:id/update-address")
   .put(authenticate, updateShippingAddressBoth);
+  router
+  .route("/markorder")
+  .put( markOrderDeliveredByOrderId);
 
 
 export default router;
